@@ -24,16 +24,8 @@ struct ArtifactDetailView: View {
                 )
                 
                 // Metadata Sections
-                if hasICHMetadata {
-                    ICHMetadataView(artifact: artifact)
-                }
-                
                 if hasDocumentMetadata {
                     DocumentMetadataView(artifact: artifact)
-                }
-                
-                if hasProcessMetadata {
-                    ProcessMetadataView(artifact: artifact)
                 }
                 
                 if hasLevelMetadata {
@@ -120,7 +112,7 @@ struct ArtifactHeaderView: View {
                 HStack {
                     Image(systemName: "number")
                         .foregroundColor(.secondary)
-                    Text("Unique ID: \(uniqueID)")
+                    Text("Unique ID: \(String(format: "%03d", uniqueID))")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -237,72 +229,65 @@ struct LevelMetadataView: View {
     let artifact: TMFArtifact
     
     var body: some View {
-        GroupBox("Document Levels") {
-            VStack(alignment: .leading, spacing: 12) {
-                DocumentLevelRow(
+        GroupBox("Artifact Requirements by Level") {
+            HStack(spacing: 20) {
+                // Trial Level
+                RequirementColumn(
                     title: "Trial Level",
-                    document: artifact.trialLevelDocument,
-                    milestone: artifact.trialLevelMilestone
+                    isRequired: artifact.trialLevelDocument == "X"
                 )
                 
-                DocumentLevelRow(
-                    title: "Country Level",
-                    document: artifact.countryLevelDocument,
-                    milestone: artifact.countryLevelMilestone
+                Divider()
+                    .frame(height: 40)
+                
+                // Country Level
+                RequirementColumn(
+                    title: "Country Level", 
+                    isRequired: artifact.countryLevelDocument == "X"
                 )
                 
-                DocumentLevelRow(
+                Divider()
+                    .frame(height: 40)
+                
+                // Site Level
+                RequirementColumn(
                     title: "Site Level",
-                    document: artifact.siteLevelDocument,
-                    milestone: artifact.siteLevelMilestone
+                    isRequired: artifact.siteLevelDocument == "X"
                 )
             }
+            .padding(.vertical, 8)
         }
     }
 }
 
-struct DocumentLevelRow: View {
+struct RequirementColumn: View {
     let title: String
-    let document: String?
-    let milestone: String?
+    let isRequired: Bool
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(spacing: 8) {
             Text(title)
-                .font(.subheadline)
+                .font(.caption)
                 .fontWeight(.medium)
+                .multilineTextAlignment(.center)
             
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text("Document:")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        if document == "X" {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.caption)
-                        } else {
-                            Image(systemName: "minus.circle")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                    }
-                    
-                    if let milestone = milestone, !milestone.isEmpty {
-                        Text("Milestone: \(milestone)")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Spacer()
+            if isRequired {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.white)
+                    .background(Circle().fill(.green).frame(width: 24, height: 24))
+                    .font(.system(size: 18))
+            } else {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundColor(.white)
+                    .background(Circle().fill(.red).frame(width: 24, height: 24))
+                    .font(.system(size: 18))
             }
         }
-        .padding(.vertical, 4)
+        .frame(maxWidth: .infinity)
     }
 }
+
+
 
 struct AdditionalMetadataView: View {
     let artifact: TMFArtifact

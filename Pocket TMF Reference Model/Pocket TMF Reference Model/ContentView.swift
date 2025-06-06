@@ -10,16 +10,72 @@ import SwiftUI
 struct ContentView: View {
     @State private var selectedZone: TMFZone?
     @State private var searchText = ""
+    @State private var showingSearchResults = false
+    
+    // Computed property to get all artifacts for search
+    private var allArtifacts: [TMFArtifact] {
+        TMFData.zones.flatMap { zone in
+            zone.sections.flatMap { section in
+                section.artifacts
+            }
+        }
+    }
+    
+    // Filtered artifacts based on search text
+    private var filteredArtifacts: [TMFArtifact] {
+        if searchText.isEmpty {
+            return []
+        }
+        return allArtifacts.filter { artifact in
+            artifact.name.localizedCaseInsensitiveContains(searchText) ||
+            artifact.number.localizedCaseInsensitiveContains(searchText)
+        }.prefix(10).map { $0 } // Limit to 10 suggestions
+    }
     
     var body: some View {
         NavigationSplitView {
-            // Sidebar - Zone List
-            List(TMFData.zones, id: \.number, selection: $selectedZone) { zone in
-                ZoneRowView(zone: zone)
-                    .tag(zone)
+            // Sidebar - Zone List with Search
+            VStack(spacing: 0) {
+                // Type-ahead suggestions - positioned at top below search
+                if !searchText.isEmpty && !filteredArtifacts.isEmpty {
+                    SearchSuggestionsView(
+                        artifacts: filteredArtifacts,
+                        onArtifactSelected: { artifact in
+                            // Find the zone containing this artifact
+                            if let zone = findZoneContaining(artifact: artifact) {
+                                selectedZone = zone
+                            }
+                            searchText = ""
+                        }
+                    )
+                    .zIndex(1) // Ensure it appears above the list
+                }
+                
+                List(TMFData.zones, id: \.number, selection: $selectedZone) { zone in
+                    ZoneRowView(zone: zone)
+                        .tag(zone)
+                }
+                .navigationTitle("TMF Zones")
+                .searchable(text: $searchText, prompt: "Search artifacts...")
+                .onSubmit(of: .search) {
+                    if !searchText.isEmpty {
+                        showingSearchResults = true
+                    }
+                }
+                .sheet(isPresented: $showingSearchResults) {
+                    ArtifactSearchResultsView(
+                        searchText: searchText,
+                        artifacts: filteredArtifacts,
+                        onArtifactSelected: { artifact in
+                            // Find the zone containing this artifact
+                            if let zone = findZoneContaining(artifact: artifact) {
+                                selectedZone = zone
+                            }
+                            showingSearchResults = false
+                        }
+                    )
+                }
             }
-            .navigationTitle("TMF Zones")
-            .searchable(text: $searchText, prompt: "Search zones...")
         } detail: {
             // Detail View
             if let selectedZone = selectedZone {
@@ -27,6 +83,99 @@ struct ContentView: View {
             } else {
                 TMFOverviewView()
             }
+        }
+    }
+    
+    // Helper function to find which zone contains a specific artifact
+    private func findZoneContaining(artifact: TMFArtifact) -> TMFZone? {
+        return TMFData.zones.first { zone in
+            zone.sections.contains { section in
+                section.artifacts.contains { $0.number == artifact.number }
+            }
+        }
+    }
+}
+
+// MARK: - Search Components
+
+struct SearchSuggestionsView: View {
+    let artifacts: [TMFArtifact]
+    let onArtifactSelected: (TMFArtifact) -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            ForEach(artifacts) { artifact in
+                Button(action: {
+                    onArtifactSelected(artifact)
+                }) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(artifact.name)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                                .multilineTextAlignment(.leading)
+                            
+                            Text(artifact.number)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Spacer()
+                        
+                        Image(systemName: "arrow.up.left")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                }
+                .buttonStyle(PlainButtonStyle())
+                
+                if artifact.id != artifacts.last?.id {
+                    Divider()
+                        .padding(.leading, 16)
+                }
+            }
+        }
+        .background(Color(.systemBackground))
+        .cornerRadius(0) // Remove corner radius for top positioning
+        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 2)
+        .padding(.horizontal, 0) // Remove horizontal padding for full width
+    }
+}
+
+struct ArtifactSearchResultsView: View {
+    let searchText: String
+    let artifacts: [TMFArtifact]
+    let onArtifactSelected: (TMFArtifact) -> Void
+    
+    var body: some View {
+        NavigationView {
+            List(artifacts) { artifact in
+                Button(action: {
+                    onArtifactSelected(artifact)
+                }) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(artifact.name)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                            .multilineTextAlignment(.leading)
+                        
+                        Text(artifact.number)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(artifact.definition)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(2)
+                    }
+                    .padding(.vertical, 2)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            .navigationTitle("Search Results")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
