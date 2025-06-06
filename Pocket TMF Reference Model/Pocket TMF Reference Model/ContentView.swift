@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var selectedZone: TMFZone?
     @State private var searchText = ""
     @State private var showingSearchResults = false
+    @State private var showingFilters = false
     
     // Computed property to get all artifacts for search
     private var allArtifacts: [TMFArtifact] {
@@ -62,6 +63,18 @@ struct ContentView: View {
                         showingSearchResults = true
                     }
                 }
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            showingFilters = true
+                        }) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "line.3.horizontal.decrease.circle")
+                                Text("Filters")
+                            }
+                        }
+                    }
+                }
                 .sheet(isPresented: $showingSearchResults) {
                     ArtifactSearchResultsView(
                         searchText: searchText,
@@ -74,6 +87,9 @@ struct ContentView: View {
                             showingSearchResults = false
                         }
                     )
+                }
+                .sheet(isPresented: $showingFilters) {
+                    FiltersView()
                 }
             }
         } detail: {
