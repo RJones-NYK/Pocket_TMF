@@ -24,22 +24,46 @@ struct FiltersView: View {
     
     // Computed properties for filter options
     private var fileTypes: [String] {
-        let types = Set(TMFData.zones.flatMap { zone in
-            zone.sections.flatMap { section in
-                section.artifacts.compactMap { artifact in
-                    var documentTypes: [String] = []
-                    if artifact.trialLevelDocument == "X" {
-                        documentTypes.append("Trial")
-                    }
-                    if artifact.countryLevelDocument == "X" {
-                        documentTypes.append("Country")
-                    }
-                    if artifact.siteLevelDocument == "X" {
-                        documentTypes.append("Site")
-                    }
-                    return documentTypes
+        // Get artifacts based on current zone/section selection
+        let relevantArtifacts: [TMFArtifact]
+        
+        if !selectedArtifact.isEmpty {
+            // If artifact is selected, get just that artifact
+            relevantArtifacts = TMFData.zones.flatMap { zone in
+                zone.sections.flatMap { section in
+                    section.artifacts.filter { $0.number == selectedArtifact }
                 }
             }
+        } else if !selectedSection.isEmpty {
+            // If section is selected, get artifacts from that section
+            relevantArtifacts = TMFData.zones.flatMap { zone in
+                zone.sections.filter { $0.number == selectedSection }
+                    .flatMap { $0.artifacts }
+            }
+        } else if !selectedZone.isEmpty {
+            // If zone is selected, get artifacts from that zone
+            relevantArtifacts = TMFData.zones.first { $0.number == selectedZone }?.sections.flatMap { $0.artifacts } ?? []
+        } else {
+            // No filter selected, show all artifacts
+            relevantArtifacts = TMFData.zones.flatMap { zone in
+                zone.sections.flatMap { section in
+                    section.artifacts
+                }
+            }
+        }
+        
+        let types = Set(relevantArtifacts.compactMap { artifact in
+            var documentTypes: [String] = []
+            if artifact.trialLevelDocument == "X" {
+                documentTypes.append("Trial")
+            }
+            if artifact.countryLevelDocument == "X" {
+                documentTypes.append("Country")
+            }
+            if artifact.siteLevelDocument == "X" {
+                documentTypes.append("Site")
+            }
+            return documentTypes
         }.flatMap { $0 })
         
         // Return in specific order: Trial, Country, Site
@@ -51,13 +75,31 @@ struct FiltersView: View {
         return TMFData.zones
     }
     
+    // Hierarchical sections - only show sections from selected zone
     private var sections: [TMFSection] {
-        return TMFData.zones.flatMap { $0.sections }
+        if selectedZone.isEmpty {
+            return TMFData.zones.flatMap { $0.sections }
+        } else {
+            return TMFData.zones.first { $0.number == selectedZone }?.sections ?? []
+        }
     }
     
+    // Hierarchical artifacts - only show artifacts from selected section (or zone if no section selected)
     private var artifacts: [TMFArtifact] {
-        return TMFData.zones.flatMap { zone in
-            zone.sections.flatMap { $0.artifacts }
+        if !selectedSection.isEmpty {
+            // Show artifacts from selected section
+            return TMFData.zones.flatMap { zone in
+                zone.sections.filter { $0.number == selectedSection }
+                    .flatMap { $0.artifacts }
+            }
+        } else if !selectedZone.isEmpty {
+            // Show artifacts from selected zone
+            return TMFData.zones.first { $0.number == selectedZone }?.sections.flatMap { $0.artifacts } ?? []
+        } else {
+            // Show all artifacts
+            return TMFData.zones.flatMap { zone in
+                zone.sections.flatMap { $0.artifacts }
+            }
         }
     }
     
@@ -132,7 +174,7 @@ struct FiltersView: View {
                             title: "Section",
                             selectedValue: $selectedSection,
                             searchText: $sectionSearchText,
-                            options: filteredSections.map { FilterOption(id: $0.number, displayName: "\($0.number) - \($0.name)") },
+                            options: filteredSections.map { FilterOption(id: $0.number, displayName: "\($0.number.formattedSectionNumber) - \($0.name)") },
                             placeholder: "Search sections..."
                         )
                         
@@ -189,6 +231,42 @@ struct FiltersView: View {
                     section: selectedSection,
                     artifact: selectedArtifact
                 )
+            }
+            // Add onChange modifiers to clear dependent filters when parent filters change
+            .onChange(of: selectedZone) { oldValue, newValue in
+                // Clear section and artifact when zone changes
+                if oldValue != newValue {
+                    selectedSection = ""
+                    selectedArtifact = ""
+                    sectionSearchText = ""
+                    artifactSearchText = ""
+                    // Clear file type as available types may have changed
+                    if !selectedFileType.isEmpty && !filteredFileTypes.contains(selectedFileType) {
+                        selectedFileType = ""
+                        fileTypeSearchText = ""
+                    }
+                }
+            }
+            .onChange(of: selectedSection) { oldValue, newValue in
+                // Clear artifact when section changes
+                if oldValue != newValue {
+                    selectedArtifact = ""
+                    artifactSearchText = ""
+                    // Clear file type as available types may have changed
+                    if !selectedFileType.isEmpty && !filteredFileTypes.contains(selectedFileType) {
+                        selectedFileType = ""
+                        fileTypeSearchText = ""
+                    }
+                }
+            }
+            .onChange(of: selectedArtifact) { oldValue, newValue in
+                // Clear file type when artifact changes as available types may have changed
+                if oldValue != newValue {
+                    if !selectedFileType.isEmpty && !filteredFileTypes.contains(selectedFileType) {
+                        selectedFileType = ""
+                        fileTypeSearchText = ""
+                    }
+                }
             }
         }
     }
