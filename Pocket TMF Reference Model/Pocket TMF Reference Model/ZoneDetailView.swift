@@ -10,6 +10,7 @@ import SwiftUI
 struct ZoneDetailView: View {
     let zone: TMFZone
     @State private var searchText = ""
+    @State private var collapsedSections: Set<String> = []
     
     var filteredSections: [TMFSection] {
         if searchText.isEmpty {
@@ -24,6 +25,18 @@ struct ZoneDetailView: View {
         }
     }
     
+    private func isSectionCollapsed(_ section: TMFSection) -> Bool {
+        collapsedSections.contains(section.number)
+    }
+    
+    private func toggleSection(_ section: TMFSection) {
+        if collapsedSections.contains(section.number) {
+            collapsedSections.remove(section.number)
+        } else {
+            collapsedSections.insert(section.number)
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             List {
@@ -34,10 +47,16 @@ struct ZoneDetailView: View {
                 
                 // Sections
                 ForEach(filteredSections) { section in
-                    Section(header: SectionHeaderView(section: section)) {
-                        ForEach(section.artifacts) { artifact in
-                            NavigationLink(destination: ArtifactDetailView(artifact: artifact)) {
-                                ArtifactRowView(artifact: artifact)
+                    Section(header: CollapsibleSectionHeaderView(
+                        section: section,
+                        isCollapsed: isSectionCollapsed(section),
+                        onToggle: { toggleSection(section) }
+                    )) {
+                        if !isSectionCollapsed(section) {
+                            ForEach(section.artifacts) { artifact in
+                                NavigationLink(destination: ArtifactDetailView(artifact: artifact)) {
+                                    ArtifactRowView(artifact: artifact)
+                                }
                             }
                         }
                     }
@@ -119,6 +138,49 @@ struct SectionHeaderView: View {
     }
 }
 
+struct CollapsibleSectionHeaderView: View {
+    let section: TMFSection
+    let isCollapsed: Bool
+    let onToggle: () -> Void
+    
+    var body: some View {
+        Button(action: onToggle) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(section.name)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    Text("Section \(section.number)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                HStack(spacing: 8) {
+                    Text("\(section.artifacts.count)")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(width: 24, height: 24)
+                        .background(Color.accentColor)
+                        .clipShape(Circle())
+                    
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.accentColor)
+                        .animation(.easeInOut(duration: 0.2), value: isCollapsed)
+                }
+            }
+            .contentShape(Rectangle()) // Makes entire header tappable
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 struct ArtifactRowView: View {
     let artifact: TMFArtifact
     
@@ -156,11 +218,7 @@ struct ArtifactRowView: View {
             }
             
             // Metadata Pills
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), alignment: .leading, spacing: 4) {
-                if let ichCode = artifact.ichCode, !ichCode.isEmpty {
-                    MetadataPill(label: "ICH", value: ichCode)
-                }
-                
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 2), alignment: .leading, spacing: 4) {
                 if let sponsorDoc = artifact.sponsorDocument, sponsorDoc == "X" {
                     MetadataPill(label: "Sponsor", value: "✓", color: .green)
                 }
