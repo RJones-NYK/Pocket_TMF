@@ -20,6 +20,7 @@ struct FiltersView: View {
     
     @State private var showingResults = false
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     // Computed properties for filter options
     private var fileTypes: [String] {
@@ -156,7 +157,7 @@ struct FiltersView: View {
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
                                 .padding()
-                                .background(Color.accentColor)
+                                .background(colorSchemeManager.selectedScheme.color)
                                 .cornerRadius(10)
                         }
                         .disabled(!hasActiveFilters)
@@ -223,6 +224,7 @@ struct FilterSection: View {
     let placeholder: String
     
     @State private var isExpanded = false
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -265,7 +267,7 @@ struct FilterSection: View {
                 }
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                .background(Color.accentColor.opacity(0.1))
+                .background(colorSchemeManager.selectedScheme.color.opacity(0.1))
                 .cornerRadius(8)
             }
             
@@ -302,12 +304,12 @@ struct FilterSection: View {
                                         
                                         if selectedValue == option.id {
                                             Image(systemName: "checkmark")
-                                                .foregroundColor(.accentColor)
+                                                .foregroundColor(colorSchemeManager.selectedScheme.color)
                                         }
                                     }
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 10)
-                                    .background(selectedValue == option.id ? Color.accentColor.opacity(0.1) : Color.clear)
+                                    .background(selectedValue == option.id ? colorSchemeManager.selectedScheme.color.opacity(0.1) : Color.clear)
                                 }
                                 .buttonStyle(PlainButtonStyle())
                                 

@@ -11,6 +11,7 @@ struct ZoneDetailView: View {
     let zone: TMFZone
     @State private var searchText = ""
     @State private var collapsedSections: Set<String> = []
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var filteredSections: [TMFSection] {
         if searchText.isEmpty {
@@ -43,6 +44,7 @@ struct ZoneDetailView: View {
                 // Zone Header
                 Section {
                     ZoneHeaderView(zone: zone)
+                        .environmentObject(colorSchemeManager)
                 }
                 
                 // Sections
@@ -51,10 +53,12 @@ struct ZoneDetailView: View {
                         section: section,
                         isCollapsed: isSectionCollapsed(section),
                         onToggle: { toggleSection(section) }
-                    )) {
+                    )
+                    .environmentObject(colorSchemeManager)) {
                         if !isSectionCollapsed(section) {
                             ForEach(section.artifacts) { artifact in
-                                NavigationLink(destination: ArtifactDetailView(artifact: artifact)) {
+                                NavigationLink(destination: ArtifactDetailView(artifact: artifact)
+                                    .environmentObject(colorSchemeManager)) {
                                     ArtifactRowView(artifact: artifact)
                                 }
                             }
@@ -71,6 +75,7 @@ struct ZoneDetailView: View {
 
 struct ZoneHeaderView: View {
     let zone: TMFZone
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var totalArtifacts: Int {
         zone.sections.reduce(0) { $0 + $1.artifacts.count }
@@ -84,7 +89,7 @@ struct ZoneHeaderView: View {
                     .fontWeight(.bold)
                     .foregroundColor(.white)
                     .frame(width: 50, height: 50)
-                    .background(Color.accentColor)
+                    .background(colorSchemeManager.selectedScheme.color)
                     .clipShape(Circle())
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -103,7 +108,9 @@ struct ZoneHeaderView: View {
             // Stats
             HStack(spacing: 20) {
                 StatPill(title: "Sections", value: "\(zone.sections.count)")
+                    .environmentObject(colorSchemeManager)
                 StatPill(title: "Artifacts", value: "\(totalArtifacts)")
+                    .environmentObject(colorSchemeManager)
             }
         }
         .padding(.vertical, 8)
@@ -112,6 +119,7 @@ struct ZoneHeaderView: View {
 
 struct SectionHeaderView: View {
     let section: TMFSection
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var body: some View {
         HStack {
@@ -132,7 +140,7 @@ struct SectionHeaderView: View {
                 .fontWeight(.semibold)
                 .foregroundColor(.white)
                 .frame(width: 24, height: 24)
-                .background(Color.accentColor)
+                .background(colorSchemeManager.selectedScheme.color)
                 .clipShape(Circle())
         }
     }
@@ -142,6 +150,7 @@ struct CollapsibleSectionHeaderView: View {
     let section: TMFSection
     let isCollapsed: Bool
     let onToggle: () -> Void
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var body: some View {
         Button(action: onToggle) {
@@ -165,13 +174,13 @@ struct CollapsibleSectionHeaderView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.white)
                         .frame(width: 24, height: 24)
-                        .background(Color.accentColor)
+                        .background(colorSchemeManager.selectedScheme.color)
                         .clipShape(Circle())
                     
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
                         .font(.caption)
                         .fontWeight(.semibold)
-                        .foregroundColor(.accentColor)
+                        .foregroundColor(colorSchemeManager.selectedScheme.color)
                         .animation(.easeInOut(duration: 0.2), value: isCollapsed)
                 }
             }
@@ -235,13 +244,14 @@ struct ArtifactRowView: View {
 struct StatPill: View {
     let title: String
     let value: String
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var body: some View {
         HStack(spacing: 4) {
             Text(value)
                 .font(.subheadline)
                 .fontWeight(.semibold)
-                .foregroundColor(.accentColor)
+                .foregroundColor(colorSchemeManager.selectedScheme.color)
             
             Text(title)
                 .font(.caption)
@@ -259,13 +269,17 @@ struct MetadataPill: View {
     let value: String
     let color: Color
     
-    init(label: String, value: String, color: Color = .accentColor) {
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    
+    init(label: String, value: String, color: Color? = nil) {
         self.label = label
         self.value = value
-        self.color = color
+        self.color = color ?? Color.accentColor // Will be overridden in body
     }
     
     var body: some View {
+        let finalColor = color == Color.accentColor ? colorSchemeManager.selectedScheme.color : color
+        
         HStack(spacing: 4) {
             Text(label)
                 .font(.caption2)
@@ -277,8 +291,8 @@ struct MetadataPill: View {
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 2)
-        .background(color.opacity(0.15))
-        .foregroundColor(color)
+        .background(finalColor.opacity(0.15))
+        .foregroundColor(finalColor)
         .clipShape(Capsule())
     }
 }
