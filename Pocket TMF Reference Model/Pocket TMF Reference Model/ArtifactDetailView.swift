@@ -124,6 +124,7 @@ struct ArtifactHeaderView: View {
 struct DefinitionSectionView: View {
     let artifact: TMFArtifact
     @Binding var isExpanded: Bool
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var body: some View {
         GroupBox {
@@ -137,7 +138,7 @@ struct DefinitionSectionView: View {
                     
                     Button(action: { isExpanded.toggle() }) {
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(colorSchemeManager.selectedScheme.color)
                     }
                 }
                 
@@ -313,6 +314,7 @@ struct AdditionalMetadataView: View {
 
 struct SubartifactsView: View {
     let subartifacts: String
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var subartifactList: [String] {
         subartifacts.components(separatedBy: "\n").filter { !$0.isEmpty }
@@ -324,7 +326,7 @@ struct SubartifactsView: View {
                 ForEach(subartifactList, id: \.self) { subartifact in
                     HStack {
                         Image(systemName: "doc")
-                            .foregroundColor(.accentColor)
+                            .foregroundColor(colorSchemeManager.selectedScheme.color)
                             .font(.caption)
                         
                         Text(subartifact.trimmingCharacters(in: .whitespaces))
@@ -342,11 +344,12 @@ struct MetadataRow: View {
     let icon: String
     let label: String
     let value: String
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     
     var body: some View {
         HStack {
             Image(systemName: icon)
-                .foregroundColor(.accentColor)
+                .foregroundColor(colorSchemeManager.selectedScheme.color)
                 .frame(width: 20)
             
             Text(label)
