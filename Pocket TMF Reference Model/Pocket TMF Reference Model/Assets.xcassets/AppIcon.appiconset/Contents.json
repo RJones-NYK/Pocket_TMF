@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "New Home.png",
+      "filename" : "New Home V2.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "New Home_Dark.png",
+      "filename" : "New Home V2_Dark.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

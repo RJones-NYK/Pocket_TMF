@@ -272,6 +272,7 @@ struct FiltersView: View {
                 }
             }
         }
+        .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
     }
     
     private var hasActiveFilters: Bool {
@@ -506,6 +507,7 @@ struct FilterResultsView: View {
                 }
             }
         }
+        .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
     }
 }
 

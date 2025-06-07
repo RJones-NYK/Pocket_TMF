@@ -230,6 +230,7 @@ struct ArtifactSearchResultsView: View {
             .navigationTitle("Search Results")
             .navigationBarTitleDisplayMode(.inline)
         }
+        .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
     }
 }
 
@@ -464,16 +465,44 @@ struct AppIcon: Identifiable, Equatable {
     static let availableIcons = [
         AppIcon(
             id: "default",
-            name: "Default",
+            name: "New Home",
             lightIconName: "New Home",
             darkIconName: "New Home_Dark",
             bundleName: nil
         ),
         AppIcon(
+            id: "interactingStudy",
+            name: "Interacting Study",
+            lightIconName: "Interacting Study",
+            darkIconName: "Interacting Study_Dark",
+            bundleName: "Interacting Study"
+        ),
+        AppIcon(
+            id: "ottawa",
+            name: "Ottawa",
+            lightIconName: "Ottawa",
+            darkIconName: "Ottawa_Dark",
+            bundleName: "Ottawa"
+        ),
+        AppIcon(
+            id: "phlexible",
+            name: "Phlexible",
+            lightIconName: "Phlexible",
+            darkIconName: "Phlexible_Dark",
+            bundleName: "Phlexible"
+        ),
+        AppIcon(
+            id: "rightOnTime",
+            name: "Right on Time",
+            lightIconName: "Right Time",
+            darkIconName: "Right Time_Dark",
+            bundleName: "Right on Time"
+        ),
+        AppIcon(
             id: "veryOrange",
             name: "Very Orange",
-            lightIconName: "Very Orange",
-            darkIconName: "Very Orange_Dark",
+            lightIconName: "Very Orange V2",
+            darkIconName: "Very Orange V2_Dark",
             bundleName: "Very Orange"
         )
     ]
@@ -867,7 +896,7 @@ struct AppIconsView: View {
                             .font(.largeTitle)
                             .fontWeight(.bold)
                         
-                        Text("Select your preferred app icon that will appear on your home screen. Changes take effect immediately.")
+                        Text("Select your preferred app icon to display on your home screen. Changes will take effect immediately and adapt to your devices theme")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
@@ -948,6 +977,7 @@ struct AppIconsView: View {
         .onAppear {
             selectedIcon = appIconManager.selectedIcon
         }
+        .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
     }
 }
 
@@ -961,7 +991,30 @@ struct AppIconDetailView: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 16) {
-                // Icon preview container with both light and dark variants
+                // Icon details (moved to left)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(icon.name)
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.primary)
+                    
+                    if isSelected {
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.subheadline)
+                                .foregroundColor(colorSchemeManager.selectedScheme.color)
+                            Text("Selected")
+                                .font(.subheadline)
+                                .foregroundColor(colorSchemeManager.selectedScheme.color)
+                                .fontWeight(.medium)
+                        }
+                        .padding(.top, 2)
+                    }
+                }
+                
+                Spacer()
+                
+                // Icon preview container with both light and dark variants (moved to right)
                 HStack(spacing: 12) {
                     // Light mode icon
                     VStack(spacing: 4) {
@@ -1009,33 +1062,6 @@ struct AppIconDetailView: View {
                             .foregroundColor(.secondary)
                     }
                 }
-                
-                // Icon details
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(icon.name)
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary)
-                    
-                    Text("Adapts to your device theme")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    
-                    if isSelected {
-                        HStack(spacing: 4) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.subheadline)
-                                .foregroundColor(colorSchemeManager.selectedScheme.color)
-                            Text("Selected")
-                                .font(.subheadline)
-                                .foregroundColor(colorSchemeManager.selectedScheme.color)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.top, 2)
-                    }
-                }
-                
-                Spacer()
             }
             .padding(20)
                                 .background(
