@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedZone: TMFZone?
+    @State private var selectedArtifactFromSearch: TMFArtifact?
     @State private var searchText = ""
     @State private var showingSearchResults = false
     @State private var showingFilters = false
@@ -62,7 +63,9 @@ struct ContentView: View {
                         SearchSuggestionsView(
                             artifacts: filteredArtifacts,
                             onArtifactSelected: { artifact in
-                                // Find the zone containing this artifact
+                                // Set the selected artifact for direct navigation
+                                selectedArtifactFromSearch = artifact
+                                // Also find and set the zone containing this artifact
                                 if let zone = findZoneContaining(artifact: artifact) {
                                     selectedZone = zone
                                 }
@@ -100,7 +103,9 @@ struct ContentView: View {
                         searchText: searchText,
                         artifacts: filteredArtifacts,
                         onArtifactSelected: { artifact in
-                            // Find the zone containing this artifact
+                            // Set the selected artifact for direct navigation
+                            selectedArtifactFromSearch = artifact
+                            // Also find and set the zone containing this artifact
                             if let zone = findZoneContaining(artifact: artifact) {
                                 selectedZone = zone
                             }
@@ -121,18 +126,30 @@ struct ContentView: View {
             }
         } detail: {
             // Detail View
-            if let selectedZone = selectedZone {
+            if let selectedArtifact = selectedArtifactFromSearch {
+                NavigationStack {
+                    ArtifactDetailView(artifact: selectedArtifact)
+                        .environmentObject(colorSchemeManager)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Back to Zone") {
+                                    selectedArtifactFromSearch = nil
+                                }
+                            }
+                        }
+                }
+            } else if let selectedZone = selectedZone {
                 ZoneDetailView(zone: selectedZone)
                     .environmentObject(colorSchemeManager)
             } else {
                 TMFOverviewView()
                     .environmentObject(colorSchemeManager)
             }
-            }
-            .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
-            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
-            .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .navigationBar)
-            .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .tabBar)
+        }
+        .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
+        .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
+        .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .navigationBar)
+        .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .tabBar)
     }
     
     // Helper function to find which zone contains a specific artifact
