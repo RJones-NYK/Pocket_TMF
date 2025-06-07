@@ -10,6 +10,8 @@ import SwiftUI
 struct ArtifactDetailView: View {
     let artifact: TMFArtifact
     @State private var isDefinitionExpanded = false
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         ScrollView {
@@ -45,6 +47,7 @@ struct ArtifactDetailView: View {
         }
         .navigationTitle(artifact.name)
         .navigationBarTitleDisplayMode(.large)
+        .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
     }
     
     // MARK: - Computed Properties
