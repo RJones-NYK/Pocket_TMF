@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var selectedZone: TMFZone?
+    @State private var selectedArtifactFromSearch: TMFArtifact?
     @State private var searchText = ""
     @State private var showingSearchResults = false
     @State private var showingFilters = false
@@ -34,29 +35,13 @@ struct ContentView: View {
         return allArtifacts.filter { artifact in
             artifact.name.localizedCaseInsensitiveContains(searchText) ||
             artifact.number.localizedCaseInsensitiveContains(searchText)
-        }.prefix(10).map { $0 } // Limit to 10 suggestions
+        }.prefix(25).map { $0 } // Allow more results for scrolling
     }
     
     var body: some View {
         NavigationSplitView {
             // Sidebar - Zone List with Search
             VStack(spacing: 0) {
-                // Type-ahead suggestions - positioned at top below search
-                if !searchText.isEmpty && !filteredArtifacts.isEmpty {
-                    SearchSuggestionsView(
-                        artifacts: filteredArtifacts,
-                        onArtifactSelected: { artifact in
-                            // Find the zone containing this artifact
-                            if let zone = findZoneContaining(artifact: artifact) {
-                                selectedZone = zone
-                            }
-                            searchText = ""
-                        }
-                    )
-                    .environmentObject(colorSchemeManager)
-                    .zIndex(1) // Ensure it appears above the list
-                }
-                
                 List(TMFData.zones, id: \.number, selection: $selectedZone) { zone in
                     ZoneRowView(zone: zone)
                         .tag(zone)
@@ -70,6 +55,27 @@ struct ContentView: View {
                 .onSubmit(of: .search) {
                     if !searchText.isEmpty {
                         showingSearchResults = true
+                    }
+                }
+                .overlay(alignment: .top) {
+                    // Search suggestions overlay positioned under the search bar
+                    if !searchText.isEmpty && !filteredArtifacts.isEmpty {
+                        SearchSuggestionsView(
+                            artifacts: filteredArtifacts,
+                            onArtifactSelected: { artifact in
+                                // Set the selected artifact for direct navigation
+                                selectedArtifactFromSearch = artifact
+                                // Also find and set the zone containing this artifact
+                                if let zone = findZoneContaining(artifact: artifact) {
+                                    selectedZone = zone
+                                }
+                                searchText = ""
+                            }
+                        )
+                        .environmentObject(colorSchemeManager)
+                        .padding(.top, 60) // Position below the search bar
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .zIndex(1000) // Ensure it appears above everything
                     }
                 }
                 .toolbar {
@@ -97,7 +103,9 @@ struct ContentView: View {
                         searchText: searchText,
                         artifacts: filteredArtifacts,
                         onArtifactSelected: { artifact in
-                            // Find the zone containing this artifact
+                            // Set the selected artifact for direct navigation
+                            selectedArtifactFromSearch = artifact
+                            // Also find and set the zone containing this artifact
                             if let zone = findZoneContaining(artifact: artifact) {
                                 selectedZone = zone
                             }
@@ -118,18 +126,30 @@ struct ContentView: View {
             }
         } detail: {
             // Detail View
-            if let selectedZone = selectedZone {
+            if let selectedArtifact = selectedArtifactFromSearch {
+                NavigationStack {
+                    ArtifactDetailView(artifact: selectedArtifact)
+                        .environmentObject(colorSchemeManager)
+                        .toolbar {
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                Button("Back to Zone") {
+                                    selectedArtifactFromSearch = nil
+                                }
+                            }
+                        }
+                }
+            } else if let selectedZone = selectedZone {
                 ZoneDetailView(zone: selectedZone)
                     .environmentObject(colorSchemeManager)
             } else {
                 TMFOverviewView()
                     .environmentObject(colorSchemeManager)
             }
-            }
-            .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
-            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
-            .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .navigationBar)
-            .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .tabBar)
+        }
+        .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
+        .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
+        .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .navigationBar)
+        .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .tabBar)
     }
     
     // Helper function to find which zone contains a specific artifact
@@ -151,44 +171,65 @@ struct SearchSuggestionsView: View {
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(artifacts) { artifact in
-                Button(action: {
-                    onArtifactSelected(artifact)
-                }) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(artifact.name)
-                                .font(.subheadline)
-                                .foregroundColor(.primary)
-                                .multilineTextAlignment(.leading)
-                            
-                            Text(artifact.number)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+        VStack(spacing: 0) {
+            // Fixed-height scrollable results container
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(artifacts) { artifact in
+                        Button(action: {
+                            onArtifactSelected(artifact)
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(artifact.name)
+                                        .font(.subheadline)
+                                        .foregroundColor(.primary)
+                                        .multilineTextAlignment(.leading)
+                                    
+                                    Text(artifact.number)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "arrow.up.left")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
                         }
+                        .buttonStyle(PlainButtonStyle())
                         
-                        Spacer()
-                        
-                        Image(systemName: "arrow.up.left")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        if artifact.id != artifacts.last?.id {
+                            Divider()
+                                .padding(.leading, 16)
+                        }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
                 }
-                .buttonStyle(PlainButtonStyle())
-                
-                if artifact.id != artifacts.last?.id {
-                    Divider()
-                        .padding(.leading, 16)
+            }
+            .frame(maxHeight: 240) // Fixed height to show approximately 5 results (48px per item)
+            .scrollIndicators(.visible)
+            
+            // Footer indicating more results if applicable
+            if artifacts.count > 5 {
+                HStack {
+                    Spacer()
+                    Text("Scroll for \(artifacts.count - 5) more results")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                    Spacer()
                 }
+                .background(colorSchemeManager.secondaryBackgroundColor(for: colorScheme))
             }
         }
         .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
-        .cornerRadius(0) // Remove corner radius for top positioning
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 2)
-        .padding(.horizontal, 0) // Remove horizontal padding for full width
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+        .padding(.horizontal, 16) // Add horizontal padding for proper positioning
     }
 }
 
