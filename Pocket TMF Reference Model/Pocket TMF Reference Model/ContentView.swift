@@ -481,6 +481,7 @@ struct SettingsView: View {
     @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     @EnvironmentObject var appIconManager: AppIconManager
     @State private var isThemeChanging = false
+    @State private var showingAppIcons = false
     
     var body: some View {
         NavigationView {
@@ -553,31 +554,54 @@ struct SettingsView: View {
                     .padding(.vertical, 8)
                 }
                 
-                // Alternative App Icons Section
+                // App Icons Navigation Section
                 if appIconManager.supportsAlternateIcons {
-                    Section("Alternative App Icons") {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Choose your preferred app icon for the home screen")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                            
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: min(AppIcon.availableIcons.count, 2)), spacing: 16) {
-                                ForEach(AppIcon.availableIcons) { icon in
-                                    AppIconSelectionView(
-                                        icon: icon,
-                                        isSelected: icon.id == appIconManager.selectedIcon.id,
-                                        onSelect: {
-                                            appIconManager.selectedIcon = icon
-                                        }
-                                    )
-                                    .environmentObject(colorSchemeManager)
+                    Section("App Icons") {
+                        Button(action: {
+                            showingAppIcons = true
+                        }) {
+                            HStack {
+                                // Current app icon preview
+                                VStack(spacing: 4) {
+                                    if let currentImage = UIImage(named: appIconManager.selectedIcon.lightIconName) {
+                                        Image(uiImage: currentImage)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fit)
+                                            .frame(width: 40, height: 40)
+                                            .clipShape(RoundedRectangle(cornerRadius: 9))
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 9)
+                                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
+                                            )
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 9)
+                                            .fill(Color.secondary.opacity(0.3))
+                                            .frame(width: 40, height: 40)
+                                    }
                                 }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Alternative App Icons")
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    
+                                    Text("Currently using: \(appIconManager.selectedIcon.name)")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
+                            .padding(.vertical, 4)
                         }
-                        .padding(.vertical, 8)
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
-                
+
                 Section("About") {
                     // TMF Reference Model Description
                     VStack(alignment: .leading, spacing: 8) {
@@ -601,7 +625,6 @@ struct SettingsView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    // CDISC Link
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
                             Text("To find out more about the CDISC Reference Model please visit ")
@@ -629,6 +652,11 @@ struct SettingsView: View {
                         dismiss()
                     }
                 }
+            }
+            .sheet(isPresented: $showingAppIcons) {
+                AppIconsView()
+                    .environmentObject(colorSchemeManager)
+                    .environmentObject(appIconManager)
             }
         }
         .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
@@ -725,7 +753,113 @@ struct ColorSchemeButton: View {
     }
 }
 
-struct AppIconSelectionView: View {
+// MARK: - App Icons View
+
+struct AppIconsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @EnvironmentObject var appIconManager: AppIconManager
+    @State private var selectedIcon: AppIcon
+    
+    init() {
+        // We'll set this properly in the init method
+        _selectedIcon = State(initialValue: AppIcon.availableIcons[0])
+    }
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // Header
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Choose Your App Icon")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                        
+                        Text("Select your preferred app icon that will appear on your home screen. Changes take effect immediately.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal)
+                    
+                    // Current selection indicator
+                    if selectedIcon.id != appIconManager.selectedIcon.id {
+                        HStack {
+                            Image(systemName: "info.circle.fill")
+                                .foregroundColor(colorSchemeManager.selectedScheme.color)
+                            
+                            Text("Tap 'Apply' to use the selected icon")
+                                .font(.subheadline)
+                                .foregroundColor(colorSchemeManager.selectedScheme.color)
+                            
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(colorSchemeManager.selectedScheme.color.opacity(0.1))
+                        .cornerRadius(10)
+                        .padding(.horizontal)
+                    }
+                    
+                    // App Icon Grid
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 1), spacing: 20) {
+                        ForEach(AppIcon.availableIcons) { icon in
+                            AppIconDetailView(
+                                icon: icon,
+                                isSelected: icon.id == selectedIcon.id,
+                                onSelect: {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selectedIcon = icon
+                                    }
+                                }
+                            )
+                            .environmentObject(colorSchemeManager)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    // Apply Button
+                    if selectedIcon.id != appIconManager.selectedIcon.id {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                appIconManager.selectedIcon = selectedIcon
+                            }
+                        }) {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                Text("Apply Selected Icon")
+                            }
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(colorSchemeManager.selectedScheme.color)
+                            .cornerRadius(12)
+                        }
+                        .padding(.horizontal)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                    
+                    Spacer(minLength: 100)
+                }
+            }
+            .navigationTitle("App Icons")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .onAppear {
+            selectedIcon = appIconManager.selectedIcon
+        }
+    }
+}
+
+struct AppIconDetailView: View {
     let icon: AppIcon
     let isSelected: Bool
     let onSelect: () -> Void
@@ -734,91 +868,99 @@ struct AppIconSelectionView: View {
     
     var body: some View {
         Button(action: onSelect) {
-            VStack(spacing: 12) {
-                // Icon preview container
-                VStack(spacing: 8) {
-                    HStack(spacing: 12) {
-                        // Light mode icon
-                        VStack(spacing: 4) {
-                            if let lightImage = UIImage(named: icon.lightIconName) {
-                                Image(uiImage: lightImage)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 50, height: 50)
-                                    .clipShape(RoundedRectangle(cornerRadius: 11))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 11)
-                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            } else {
-                                RoundedRectangle(cornerRadius: 11)
-                                    .fill(Color.secondary.opacity(0.3))
-                                    .frame(width: 50, height: 50)
-                            }
-                            
-                            Text("Light")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+            HStack(spacing: 16) {
+                // Icon preview container with both light and dark variants
+                HStack(spacing: 12) {
+                    // Light mode icon
+                    VStack(spacing: 4) {
+                        if let lightImage = UIImage(named: icon.lightIconName) {
+                            Image(uiImage: lightImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 60, height: 60)
+                                .clipShape(RoundedRectangle(cornerRadius: 13))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 13)
+                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: 13)
+                                .fill(Color.secondary.opacity(0.3))
+                                .frame(width: 60, height: 60)
                         }
                         
-                        // Dark mode icon
-                        VStack(spacing: 4) {
-                            if let darkImage = UIImage(named: icon.darkIconName) {
-                                Image(uiImage: darkImage)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 50, height: 50)
-                                    .clipShape(RoundedRectangle(cornerRadius: 11))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 11)
-                                            .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
-                                    )
-                            } else {
-                                RoundedRectangle(cornerRadius: 11)
-                                    .fill(Color.secondary.opacity(0.3))
-                                    .frame(width: 50, height: 50)
-                            }
-                            
-                            Text("Dark")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                        Text("Light")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Dark mode icon
+                    VStack(spacing: 4) {
+                        if let darkImage = UIImage(named: icon.darkIconName) {
+                            Image(uiImage: darkImage)
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: 60, height: 60)
+                                .clipShape(RoundedRectangle(cornerRadius: 13))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 13)
+                                        .stroke(Color.secondary.opacity(0.3), lineWidth: 0.5)
+                                )
+                        } else {
+                            RoundedRectangle(cornerRadius: 13)
+                                .fill(Color.secondary.opacity(0.3))
+                                .frame(width: 60, height: 60)
                         }
+                        
+                        Text("Dark")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                 }
                 
-                // Icon name and selection indicator
-                VStack(spacing: 4) {
+                // Icon details
+                VStack(alignment: .leading, spacing: 4) {
                     Text(icon.name)
-                        .font(.subheadline)
-                        .fontWeight(isSelected ? .semibold : .regular)
+                        .font(.title2)
+                        .fontWeight(.semibold)
                         .foregroundColor(.primary)
+                    
+                    Text("Adapts to your device theme")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                     
                     if isSelected {
                         HStack(spacing: 4) {
                             Image(systemName: "checkmark.circle.fill")
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundColor(colorSchemeManager.selectedScheme.color)
                             Text("Selected")
-                                .font(.caption)
+                                .font(.subheadline)
                                 .foregroundColor(colorSchemeManager.selectedScheme.color)
+                                .fontWeight(.medium)
                         }
+                        .padding(.top, 2)
                     }
                 }
+                
+                Spacer()
             }
-            .padding(16)
+            .padding(20)
             .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? colorSchemeManager.selectedScheme.color.opacity(0.1) : Color.clear)
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isSelected ? colorSchemeManager.selectedScheme.color.opacity(0.1) : Color(.systemGray6))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 16)
                     .stroke(
-                        isSelected ? colorSchemeManager.selectedScheme.color : Color.secondary.opacity(0.3),
-                        lineWidth: isSelected ? 2 : 1
+                        isSelected ? colorSchemeManager.selectedScheme.color : Color.clear,
+                        lineWidth: isSelected ? 2 : 0
                     )
             )
         }
         .buttonStyle(PlainButtonStyle())
+        .scaleEffect(isSelected ? 1.02 : 1.0)
+        .animation(.easeInOut(duration: 0.2), value: isSelected)
     }
 }
 
