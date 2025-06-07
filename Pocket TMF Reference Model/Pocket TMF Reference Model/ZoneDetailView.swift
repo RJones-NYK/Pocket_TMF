@@ -12,6 +12,7 @@ struct ZoneDetailView: View {
     @State private var searchText = ""
     @State private var collapsedSections: Set<String> = []
     @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     var filteredSections: [TMFSection] {
         if searchText.isEmpty {
@@ -45,6 +46,7 @@ struct ZoneDetailView: View {
                 Section {
                     ZoneHeaderView(zone: zone)
                         .environmentObject(colorSchemeManager)
+                        .listRowBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
                 }
                 
                 // Sections
@@ -61,6 +63,7 @@ struct ZoneDetailView: View {
                                     .environmentObject(colorSchemeManager)) {
                                     ArtifactRowView(artifact: artifact)
                                 }
+                                .listRowBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
                             }
                         }
                     }
@@ -69,6 +72,8 @@ struct ZoneDetailView: View {
             .navigationTitle("Zone \(zone.number)")
             .navigationBarTitleDisplayMode(.large)
             .searchable(text: $searchText, prompt: "Search artifacts...")
+            .scrollContentBackground(.hidden)
+            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
         }
     }
 }

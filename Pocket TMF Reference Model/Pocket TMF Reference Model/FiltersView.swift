@@ -21,6 +21,7 @@ struct FiltersView: View {
     @State private var showingResults = false
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     // Computed properties for filter options
     private var fileTypes: [String] {
@@ -215,6 +216,7 @@ struct FiltersView: View {
                     Spacer(minLength: 50)
                 }
             }
+            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -231,6 +233,7 @@ struct FiltersView: View {
                     section: selectedSection,
                     artifact: selectedArtifact
                 )
+                .environmentObject(colorSchemeManager)
             }
             // Add onChange modifiers to clear dependent filters when parent filters change
             .onChange(of: selectedZone) { oldValue, newValue in
@@ -303,6 +306,7 @@ struct FilterSection: View {
     
     @State private var isExpanded = false
     @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -399,7 +403,7 @@ struct FilterSection: View {
                         }
                     }
                     .frame(maxHeight: 200)
-                    .background(Color(.systemGray6))
+                    .background(Color(.systemGray5))
                     .cornerRadius(8)
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.95)))
@@ -407,7 +411,7 @@ struct FilterSection: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 16)
-        .background(Color(.systemBackground))
+        .background(Color(.systemGray6))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
@@ -420,6 +424,8 @@ struct FilterResultsView: View {
     let artifact: String
     
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     private var filteredArtifacts: [TMFArtifact] {
         var results = TMFData.zones.flatMap { zone in
@@ -468,7 +474,8 @@ struct FilterResultsView: View {
     var body: some View {
         NavigationView {
             List(filteredArtifacts) { artifact in
-                NavigationLink(destination: ArtifactDetailView(artifact: artifact)) {
+                NavigationLink(destination: ArtifactDetailView(artifact: artifact)
+                    .environmentObject(colorSchemeManager)) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(artifact.name)
                             .font(.headline)
@@ -485,7 +492,10 @@ struct FilterResultsView: View {
                     }
                     .padding(.vertical, 2)
                 }
+                .listRowBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
             }
+            .scrollContentBackground(.hidden)
+            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
             .navigationTitle("Filter Results (\(filteredArtifacts.count))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

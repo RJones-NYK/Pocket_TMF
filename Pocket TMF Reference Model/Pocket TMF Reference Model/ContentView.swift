@@ -15,6 +15,7 @@ struct ContentView: View {
     @State private var showingSettings = false
     @StateObject private var colorSchemeManager = ColorSchemeManager()
     @StateObject private var appIconManager = AppIconManager()
+    @Environment(\.colorScheme) var colorScheme
     
     // Computed property to get all artifacts for search
     private var allArtifacts: [TMFArtifact] {
@@ -52,6 +53,7 @@ struct ContentView: View {
                             searchText = ""
                         }
                     )
+                    .environmentObject(colorSchemeManager)
                     .zIndex(1) // Ensure it appears above the list
                 }
                 
@@ -59,7 +61,10 @@ struct ContentView: View {
                     ZoneRowView(zone: zone)
                         .tag(zone)
                         .environmentObject(colorSchemeManager)
+                        .listRowBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
                 }
+                .scrollContentBackground(.hidden)
+                .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
                 .navigationTitle("TMF Zones")
                 .searchable(text: $searchText, prompt: "Search artifacts...")
                 .onSubmit(of: .search) {
@@ -120,8 +125,11 @@ struct ContentView: View {
                 TMFOverviewView()
                     .environmentObject(colorSchemeManager)
             }
-        }
-        .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
+            }
+            .preferredColorScheme(colorSchemeManager.selectedThemeMode.colorScheme)
+            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
+            .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .navigationBar)
+            .toolbarBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme), for: .tabBar)
     }
     
     // Helper function to find which zone contains a specific artifact
@@ -139,6 +147,8 @@ struct ContentView: View {
 struct SearchSuggestionsView: View {
     let artifacts: [TMFArtifact]
     let onArtifactSelected: (TMFArtifact) -> Void
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -175,7 +185,7 @@ struct SearchSuggestionsView: View {
                 }
             }
         }
-        .background(Color(.systemBackground))
+        .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
         .cornerRadius(0) // Remove corner radius for top positioning
         .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 2)
         .padding(.horizontal, 0) // Remove horizontal padding for full width
@@ -186,6 +196,8 @@ struct ArtifactSearchResultsView: View {
     let searchText: String
     let artifacts: [TMFArtifact]
     let onArtifactSelected: (TMFArtifact) -> Void
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         NavigationView {
@@ -211,7 +223,10 @@ struct ArtifactSearchResultsView: View {
                     .padding(.vertical, 2)
                 }
                 .buttonStyle(PlainButtonStyle())
+                .listRowBackground(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
             }
+            .scrollContentBackground(.hidden)
+            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
             .navigationTitle("Search Results")
             .navigationBarTitleDisplayMode(.inline)
         }
@@ -251,6 +266,7 @@ struct ZoneRowView: View {
 
 struct TMFOverviewView: View {
     @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         ScrollView {
@@ -304,6 +320,7 @@ struct TMFOverviewView: View {
         }
         .navigationTitle("TMF Reference Model")
         .navigationBarTitleDisplayMode(.inline)
+        .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
     }
 }
 
@@ -399,6 +416,42 @@ extension Color {
     }
 }
 
+// MARK: - Custom View Modifiers
+
+struct CustomBackgroundModifier: ViewModifier {
+    @EnvironmentObject var colorSchemeManager: ColorSchemeManager
+    @Environment(\.colorScheme) var colorScheme
+    let priority: BackgroundPriority
+    
+    enum BackgroundPriority {
+        case primary
+        case secondary
+        case tertiary
+    }
+    
+    func body(content: Content) -> some View {
+        content
+            .background(backgroundColorForPriority())
+    }
+    
+    private func backgroundColorForPriority() -> Color {
+        switch priority {
+        case .primary:
+            return colorSchemeManager.primaryBackgroundColor(for: colorScheme)
+        case .secondary:
+            return colorSchemeManager.secondaryBackgroundColor(for: colorScheme)
+        case .tertiary:
+            return colorSchemeManager.tertiaryBackgroundColor(for: colorScheme)
+        }
+    }
+}
+
+extension View {
+    func customBackground(_ priority: CustomBackgroundModifier.BackgroundPriority = .primary) -> some View {
+        self.modifier(CustomBackgroundModifier(priority: priority))
+    }
+}
+
 // MARK: - App Icon Management
 
 struct AppIcon: Identifiable, Equatable {
@@ -474,12 +527,47 @@ class ColorSchemeManager: ObservableObject {
         let savedTheme = UserDefaults.standard.string(forKey: "selectedThemeMode") ?? ThemeMode.system.rawValue
         self.selectedThemeMode = ThemeMode(rawValue: savedTheme) ?? .system
     }
+    
+    // Custom background colors - Dark blue theme for dark mode, warm off-white for light mode
+    func primaryBackgroundColor(for colorScheme: SwiftUI.ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color(red: 0.078, green: 0.089, blue: 0.161) // #141729 - Cursor-like dark blue
+        case .light:
+            return Color(red: 0.980, green: 0.976, blue: 0.969) // #FAF9F7 - Warm off-white
+        @unknown default:
+            return Color(.systemBackground)
+        }
+    }
+    
+    func secondaryBackgroundColor(for colorScheme: SwiftUI.ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color(red: 0.098, green: 0.109, blue: 0.180) // #191C2E - Slightly lighter dark blue
+        case .light:
+            return Color(red: 0.973, green: 0.969, blue: 0.961) // #F8F7F5 - Slightly darker warm off-white
+        @unknown default:
+            return Color(.secondarySystemBackground)
+        }
+    }
+    
+    func tertiaryBackgroundColor(for colorScheme: SwiftUI.ColorScheme) -> Color {
+        switch colorScheme {
+        case .dark:
+            return Color(red: 0.118, green: 0.129, blue: 0.200) // #1E2133 - Even lighter dark blue
+        case .light:
+            return Color(red: 0.965, green: 0.961, blue: 0.953) // #F6F5F3 - Even more muted warm off-white
+        @unknown default:
+            return Color(.tertiarySystemBackground)
+        }
+    }
 }
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     @EnvironmentObject var appIconManager: AppIconManager
+    @Environment(\.colorScheme) var colorScheme
     @State private var isThemeChanging = false
     @State private var showingAppIcons = false
     
@@ -644,6 +732,8 @@ struct SettingsView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -759,6 +849,7 @@ struct AppIconsView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var colorSchemeManager: ColorSchemeManager
     @EnvironmentObject var appIconManager: AppIconManager
+    @Environment(\.colorScheme) var colorScheme
     @State private var selectedIcon: AppIcon
     
     init() {
@@ -843,6 +934,7 @@ struct AppIconsView: View {
                     Spacer(minLength: 100)
                 }
             }
+            .background(colorSchemeManager.primaryBackgroundColor(for: colorScheme))
             .navigationTitle("App Icons")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -946,9 +1038,9 @@ struct AppIconDetailView: View {
                 Spacer()
             }
             .padding(20)
-            .background(
+                                .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(isSelected ? colorSchemeManager.selectedScheme.color.opacity(0.1) : Color(.systemGray6))
+                    .fill(isSelected ? colorSchemeManager.selectedScheme.color.opacity(0.1) : colorSchemeManager.secondaryBackgroundColor(for: colorScheme))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
