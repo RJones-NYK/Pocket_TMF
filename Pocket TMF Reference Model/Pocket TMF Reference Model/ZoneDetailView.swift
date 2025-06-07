@@ -128,7 +128,7 @@ struct SectionHeaderView: View {
                     .font(.headline)
                     .fontWeight(.semibold)
                 
-                Text("Section \(section.number)")
+                Text("Section \(section.number.formattedSectionNumber)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -161,7 +161,7 @@ struct CollapsibleSectionHeaderView: View {
                         .fontWeight(.semibold)
                         .foregroundColor(.primary)
                     
-                    Text("Section \(section.number)")
+                    Text("Section \(section.number.formattedSectionNumber)")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
